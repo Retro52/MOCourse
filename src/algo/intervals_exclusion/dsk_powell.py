@@ -12,6 +12,9 @@ def dsk_powell(_f, _inter, _x: np.ndarray, _s: np.ndarray, _eps: float = 1e-2):
     _f_1 = _f(_x + _l_1 * _s)
     _f_2 = _f(_x + _l_2 * _s)
 
+    if (2 * (_f_0 - 2 * _f_1 + _f_2)) == 0:
+        return _l_1
+
     _l = _l_1 + (_l_1 - _l_0) * (_f_0 - _f_2) / (2 * (_f_0 - 2 * _f_1 + _f_2))
 
     while True:

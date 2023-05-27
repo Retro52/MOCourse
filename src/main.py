@@ -1,11 +1,13 @@
 import core
-from core import log
-core.set_log_level(log.LogLevel.Trace)
-
-from algo import pearson
-
 import numpy as np
+from core import log
+from algo import pearson
+from algo.intervals_exclusion import dsk_powell
+from algo.intervals_exclusion import golden_selection
 import matplotlib.pyplot as plt
+from helpers import pyplot_wrapper as plotter
+
+core.set_log_level(log.LogLevel.Trace)
 
 function_values = {}
 function_call_counter = 0
@@ -75,7 +77,31 @@ def test_by_h_step(_f, _df, _x0, _h_steps: list, *args, **kwargs):
                                         f"{str(deviations):100} |\n"
                                         f"{str(function_calls):100}\n|"
                                         f"{str(results):100}")
-    plot_results(results, histories, deviations, function_calls, _h_steps, "Derivatives step", "h")
+    plotter.plot_results(results, histories, deviations, function_calls, _h_steps, _f, "Derivatives step", "h")
+
+
+def test_by_q_step(_f, _df, _x0, _q_steps: list, *args, **kwargs):
+    results = []
+    histories = []
+    deviations = []
+    function_calls = []
+    global function_call_counter
+
+    for _q in _q_steps:
+        _result, _history = pearson.pearson2(_f, _df, _x0, _sv_q=_q, *args, **kwargs)
+
+        results.append(_result)
+        histories.append(_history)
+        function_calls.append(function_call_counter)
+        deviations.append(np.linalg.norm(_result - np.array([1.0, 1.0])))
+
+        function_call_counter = 0
+
+    log.program_log(log.LogLevel.Error, f"Test finished:\n"
+                                        f"{str(deviations):100} |\n"
+                                        f"{str(function_calls):100}\n|"
+                                        f"{str(results):100}")
+    plotter.plot_results(results, histories, deviations, function_calls, _q_steps, _f, "Sven coefficient", "q")
 
 
 def test_by_derivatives_dir(_f, _df, _df_l, _df_r, _x0, *args, **kwargs):
@@ -99,7 +125,55 @@ def test_by_derivatives_dir(_f, _df, _df_l, _df_r, _x0, *args, **kwargs):
         function_call_counter = 0
 
     log.program_log(log.LogLevel.Error, f"Test finished: {deviations} | {function_calls} | {results} ")
-    plot_results(results, histories, deviations, function_calls, _labels, "Derivatives scheme", "scheme")
+    plotter.plot_results(results, histories, deviations, function_calls, _labels, _f, "Derivatives scheme", "scheme")
+
+
+def test_by_search_precision_type(_f, _df, _x0, *args, **kwargs):
+    results = []
+    histories = []
+    deviations = []
+    function_calls = []
+    global function_call_counter
+
+    _labels = ["Golden intersection", "DSK-P"]
+    _options = [golden_selection.golden_selection, dsk_powell.dsk_powell]
+
+    for _i, _algo in enumerate(_options):
+        _result, _history = pearson.pearson2(_f, _df, _x0, _search_algo=_algo, *args, **kwargs)
+
+        results.append(_result)
+        histories.append(_history)
+        function_calls.append(function_call_counter)
+        deviations.append(np.linalg.norm(_result - np.array([1.0, 1.0])))
+
+        function_call_counter = 0
+
+    log.program_log(log.LogLevel.Error, f"Test finished: {deviations} | {function_calls} | {results} ")
+    plotter.plot_results(results, histories, deviations, function_calls, _labels, _f, "Search algorithm", "Algorithm")
+
+
+def test_by_break_condition(_f, _df, _x0, *args, **kwargs):
+    results = []
+    histories = []
+    deviations = []
+    function_calls = []
+    global function_call_counter
+
+    _labels = ["Default", "Gradient"]
+    _options = [True, False]
+
+    for _i, _option in enumerate(_options):
+        _result, _history = pearson.pearson2(_f, _df, _x0, _test_option=_option, *args, **kwargs)
+
+        results.append(_result)
+        histories.append(_history)
+        function_calls.append(function_call_counter)
+        deviations.append(np.linalg.norm(_result - np.array([1.0, 1.0])))
+
+        function_call_counter = 0
+
+    log.program_log(log.LogLevel.Error, f"Test finished: {deviations} | {function_calls} | {results} ")
+    plotter.plot_results(results, histories, deviations, function_calls, _labels, _f, "Break condition", "Condition")
 
 
 def test_by_search_precision_step(_f, _df, _x0, _eps_steps: list, *args, **kwargs):
@@ -120,101 +194,73 @@ def test_by_search_precision_step(_f, _df, _x0, _eps_steps: list, *args, **kwarg
         function_call_counter = 0
 
     log.program_log(log.LogLevel.Error, f"Test finished: {deviations} | {function_calls} | {results} ")
-    plot_results(results, histories, deviations, function_calls, _eps_steps, "Search precision", "eps")
+    plotter.plot_results(results, histories, deviations, function_calls, _eps_steps, _f, "Search precision", "eps")
 
 
-def plot_results(_results: list,
-                 _histories: list,
-                 _deviations: list,
-                 _function_calls: list,
-                 _values: list,
-                 _title: str = "",
-                 _label: str = ""):
+def test_by_restart_count(_f, _df, _x0, _restarts_list: list, *args, **kwargs):
+    results = []
+    histories = []
+    deviations = []
+    function_calls = []
+    global function_call_counter
 
-    # Plot the search paths
-    fig1 = plt.figure()
-    ax1 = fig1.add_subplot(111, projection='3d')
-    ax1.set_xlabel('x')
-    ax1.set_ylabel('y')
-    ax1.set_zlabel('z')
-    ax1.set_title(_title)
+    for _restart_count in _restarts_list:
+        _result, _history = pearson.pearson2(_f, _df, _x0, _restarts=_restart_count, *args, **kwargs)
 
-    lines = []  # List to store Line3D objects
-    _min_x = 0.0
-    _min_y = 0.0
-    _max_x = 0.0
-    _max_y = 0.0
+        results.append(_result)
+        histories.append(_history)
+        function_calls.append(function_call_counter)
+        deviations.append(np.linalg.norm(_result - np.array([1.0, 1.0])))
 
-    for i, _history in enumerate(_histories):
-        _history = np.array(_history)
-        _x_values = _history[:, 0]
-        _y_values = _history[:, 1]
+        function_call_counter = 0
 
-        _min_x = min(_min_x, min(_x_values))
-        _min_y = min(_min_y, min(_y_values))
-
-        _max_x = max(_max_x, max(_x_values))
-        _max_y = max(_max_y, max(_y_values))
-
-        _z_values = f(_history.T)
-        line = ax1.plot3D(_x_values, _y_values, _z_values, '-o', label=f'{_label} = {_values[i]}')
-        lines.extend(line)  # Add the Line3D object to the list
-
-    # Creating a mesh grid for the function evaluation
-    x = np.linspace(_min_x, _max_x, 100)
-    y = np.linspace(_min_y, _max_y, 100)
-
-    X, Y = np.meshgrid(x, y)
-    Z = f(np.array([X, Y]))
-
-    # Plotting the surface of the function
-    ax1.plot_surface(X, Y, Z, cmap='hsv', alpha=0.3)
-    ax1.set_xlabel('x')
-    ax1.set_ylabel('y')
-    ax1.set_zlabel('z')
-    ax1.set_title(f'Points History and Function Surface: {_title}')
-
-    ax1.legend(lines, [line.get_label() for line in lines])
-
-    # Plot the function calls
-    fig2 = plt.figure()
-    ax2 = fig2.add_subplot(111)
-    ax2.bar(range(len(_values)), _function_calls)
-    ax2.set_xticks(range(len(_values)))
-    ax2.set_xticklabels(_values)
-    ax2.set_xlabel('Step')
-    ax2.set_ylabel('Function Calls')
-    ax2.set_title(f'Number of Function Calls: {_title}')
-
-    # Plot the result deviation
-    fig3 = plt.figure()
-    ax3 = fig3.add_subplot(111)
-    ax3.bar(range(len(_values)), _deviations)
-    ax3.set_xticks(range(len(_values)))
-    ax3.set_xticklabels(_values)
-    ax3.set_xlabel('Step')
-    ax3.set_ylabel('Deviation')
-    ax3.set_title(f'Results deviation from perfect one: {_title}')
+    log.program_log(log.LogLevel.Error, f"Test finished:\n"
+                                        f"{str(deviations):100} |\n"
+                                        f"{str(function_calls):100}\n|"
+                                        f"{str(results):100}")
+    plotter.plot_results(results, histories, deviations, function_calls, _restarts_list, _f, "Forced restarts count",
+                         "Restarts")
 
 
 def main():
     # Example usage
     x0 = [2, 2]  # Initial guess, consistent throughout all the tests, except the last one
-    h0 = 0.001
+    h0 = 1e-3
     sv0 = 1e-3
     search_pr = 1e-3
     pearson_pr = 1e-7
+    search_algo = golden_selection.golden_selection
     _restarts = 100
+
 
     h_values = [1, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10]
     e_values = [1, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10]
-    # log.program_log(log.LogLevel.Important, f"Start testing by derivative step size: {h_values}")
-    # test_by_h_step(f, df, x0, h_values, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr, _restarts=100)
-    log.program_log(log.LogLevel.Important, f"Start testing derivative scheme")
-    test_by_derivatives_dir(f, df, df_left, df_right, x0, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr, _restarts=_restarts)
-    # log.program_log(log.LogLevel.Important, f"Start testing by linear search precision: {e_values}")
-    # test_by_search_precision_step(f, df, x0, e_values, _df_h=h0, _sv_q=sv0, _eps=pearson_pr)
+    q_values = [1, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10]
+    r_values = [1, 1e+1, 1e+2, 1e+3, 1e+4]
 
+    # log.program_log(log.LogLevel.Important, f"Start testing by derivative step size: {h_values}")
+    # test_by_h_step(f, df, x0, h_values, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr, _search_algo=search_algo, _restarts=_restarts)
+    h0 = 0.001
+
+    # log.program_log(log.LogLevel.Important, f"Start testing derivative scheme")
+    # test_by_derivatives_dir(f, df, df_left, df_right, x0, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr, _search_algo=search_algo, _restarts=_restarts)
+
+    # log.program_log(log.LogLevel.Important, f"Start testing for best Sven algo coef")
+    # test_by_q_step(f, df, x0, q_values, _df_h=h0, _gs_e=search_pr, _eps=pearson_pr, _search_algo=search_algo, _restarts=_restarts)
+    sv0 = 0.001
+
+    # log.program_log(log.LogLevel.Important, f"Start testing by linear search precision: {e_values}")
+    # test_by_search_precision_step(f, df, x0, e_values, _df_h=h0, _sv_q=sv0, _eps=pearson_pr, _search_algo=search_algo, _restarts=100)
+    search_pr = 0.001
+
+    # log.program_log(log.LogLevel.Important, f"Searching for best lambda finder")
+    # test_by_search_precision_type(f, df, x0, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr, _restarts=_restarts)
+
+    # log.program_log(log.LogLevel.Important, f"Start testing for break condition")
+    # test_by_break_condition(f, df, x0, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr, _restarts=_restarts)
+
+    log.program_log(log.LogLevel.Important, f"Start testing for restarts count")
+    test_by_restart_count(f, df, x0, r_values, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr)
     plt.show()
 
 
