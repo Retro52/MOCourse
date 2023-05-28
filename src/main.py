@@ -2,9 +2,10 @@ import core
 import numpy as np
 from core import log
 from algo import pearson
+from functools import partial
+import matplotlib.pyplot as plt
 from algo.intervals_exclusion import dsk_powell
 from algo.intervals_exclusion import golden_selection
-import matplotlib.pyplot as plt
 from helpers import pyplot_wrapper as plotter
 
 core.set_log_level(log.LogLevel.Trace)
@@ -25,6 +26,14 @@ def f(x: np.ndarray):
         value = (1 - x[0]) ** 2 + 100 * (x[1] - x[0] ** 2) ** 2
         function_values[value.tobytes()] = value
         return value
+
+
+def fee(_x: np.ndarray):
+    return 10 - (_x[0] ** 2) - (_x[1] ** 2)
+
+
+def fee_sq(_x: np.ndarray, _r: float):
+    return f(_x) + _r * (fee(_x) ** 2)
 
 
 def df(_x, _f, _h=1e-2):
@@ -222,13 +231,37 @@ def test_by_restart_count(_f, _df, _x0, _restarts_list: list, *args, **kwargs):
                          "Restarts")
 
 
+def test_by_fee(_f, _pure_f, _df, _x0, _r_values: list, *args, **kwargs):
+    results = [_x0]
+    histories = []
+    deviations = []
+    function_calls = []
+    global function_call_counter
+
+    for _r in _r_values:
+        _result, _history = pearson.pearson2(partial(_f, _r=_r), _df, _x0, *args, **kwargs)
+
+        results.append(_result)
+        histories.append(_history)
+        function_calls.append(function_call_counter)
+        deviations.append(np.linalg.norm(_result - np.array([1.0, 1.0])))
+
+        function_call_counter = 0
+
+    log.program_log(log.LogLevel.Error, f"Test finished:\n"
+                                        f"{str(deviations):100} |\n"
+                                        f"{str(function_calls):100}\n|"
+                                        f"{str(results):100}")
+    plotter.plot_fee_results(_pure_f, results, 10.0)
+
+
 def main():
     # Example usage
-    x0 = [2, 2]  # Initial guess, consistent throughout all the tests, except the last one
+    x0 = [1.5, 0.5]  # Initial guess, consistent throughout all the tests, except the last one
     h0 = 1e-3
     sv0 = 1e-3
     search_pr = 1e-3
-    pearson_pr = 1e-7
+    pearson_pr = 1e-13
     search_algo = golden_selection.golden_selection
     _restarts = 100
 
@@ -236,7 +269,7 @@ def main():
     h_values = [1, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10]
     e_values = [1, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10]
     q_values = [1, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10]
-    r_values = [1, 1e+1, 1e+2, 1e+3, 1e+4]
+    r_values = q_values.copy()
 
     # log.program_log(log.LogLevel.Important, f"Start testing by derivative step size: {h_values}")
     # test_by_h_step(f, df, x0, h_values, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr, _search_algo=search_algo, _restarts=_restarts)
@@ -247,7 +280,7 @@ def main():
 
     # log.program_log(log.LogLevel.Important, f"Start testing for best Sven algo coef")
     # test_by_q_step(f, df, x0, q_values, _df_h=h0, _gs_e=search_pr, _eps=pearson_pr, _search_algo=search_algo, _restarts=_restarts)
-    sv0 = 0.001
+    # sv0 = 0.001
 
     # log.program_log(log.LogLevel.Important, f"Start testing by linear search precision: {e_values}")
     # test_by_search_precision_step(f, df, x0, e_values, _df_h=h0, _sv_q=sv0, _eps=pearson_pr, _search_algo=search_algo, _restarts=100)
@@ -259,8 +292,12 @@ def main():
     # log.program_log(log.LogLevel.Important, f"Start testing for break condition")
     # test_by_break_condition(f, df, x0, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr, _restarts=_restarts)
 
-    log.program_log(log.LogLevel.Important, f"Start testing for restarts count")
-    test_by_restart_count(f, df, x0, r_values, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr)
+    # log.program_log(log.LogLevel.Important, f"Start testing for restarts count")
+    # test_by_restart_count(f, df, x0, r_values, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr)
+
+    log.program_log(log.LogLevel.Important, f"Start testing by fee value")
+    test_by_fee(fee_sq, f, df, x0, r_values, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr)
+
     plt.show()
 
 

@@ -13,6 +13,7 @@ def dsk_powell(_f, _inter, _x: np.ndarray, _s: np.ndarray, _eps: float = 1e-2):
     _f_2 = _f(_x + _l_2 * _s)
 
     if (2 * (_f_0 - 2 * _f_1 + _f_2)) == 0:
+        log.program_log(log.LogLevel.Trace, f"algo.dsk_powell: call to the dsk_powell returned: {_l_1}")
         return _l_1
 
     _l = _l_1 + (_l_1 - _l_0) * (_f_0 - _f_2) / (2 * (_f_0 - 2 * _f_1 + _f_2))
@@ -20,6 +21,7 @@ def dsk_powell(_f, _inter, _x: np.ndarray, _s: np.ndarray, _eps: float = 1e-2):
     while True:
 
         if abs(_f_1 - _f(_x + _l * _s)) < _eps and abs(_l_1 - _l) < _eps:
+            log.program_log(log.LogLevel.Trace, f"algo.dsk_powell: call to the dsk_powell returned: {_l}")
             return _l
 
         if _l < _l_1:
@@ -29,6 +31,7 @@ def dsk_powell(_f, _inter, _x: np.ndarray, _s: np.ndarray, _eps: float = 1e-2):
             _l_0 = _l_1
             _l_1 = _l
         else:
+            log.program_log(log.LogLevel.Trace, f"algo.dsk_powell: call to the dsk_powell returned: {_l}")
             return _l
 
         _f_list = [_f_0, _f_1, _f_2]
