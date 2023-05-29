@@ -28,12 +28,12 @@ def f(x: np.ndarray):
         return value
 
 
-def fee(_x: np.ndarray):
-    return 10 - (_x[0] ** 2) - (_x[1] ** 2)
+def fee(_x, _radius: float):
+    return _radius - (_x[0] ** 2) - (_x[1] ** 2)
 
 
-def fee_sq(_x: np.ndarray, _r: float):
-    return f(_x) + _r * (fee(_x) ** 2)
+def fee_sq(_x, _r: float, _radius: float):
+    return f(_x) + _r * (fee(_x, _radius) ** 2)
 
 
 def df(_x, _f, _h=1e-2):
@@ -231,7 +231,7 @@ def test_by_restart_count(_f, _df, _x0, _restarts_list: list, *args, **kwargs):
                          "Restarts")
 
 
-def test_by_fee(_f, _pure_f, _df, _x0, _r_values: list, *args, **kwargs):
+def test_by_fee(_f, _radius, _pure_f, _df, _x0, _r_values: list, *args, **kwargs):
     results = [_x0]
     histories = []
     deviations = []
@@ -239,7 +239,7 @@ def test_by_fee(_f, _pure_f, _df, _x0, _r_values: list, *args, **kwargs):
     global function_call_counter
 
     for _r in _r_values:
-        _result, _history = pearson.pearson2(partial(_f, _r=_r), _df, _x0, *args, **kwargs)
+        _result, _history = pearson.pearson2(partial(_f, _r=_r, _radius=_radius), _df, _x0, *args, **kwargs)
 
         results.append(_result)
         histories.append(_history)
@@ -252,24 +252,27 @@ def test_by_fee(_f, _pure_f, _df, _x0, _r_values: list, *args, **kwargs):
                                         f"{str(deviations):100} |\n"
                                         f"{str(function_calls):100}\n|"
                                         f"{str(results):100}")
-    plotter.plot_fee_results(_pure_f, results, 10.0)
+    plotter.plot_fee_results(_pure_f, results, _radius)
 
 
 def main():
     # Example usage
-    x0 = [1.5, 0.5]  # Initial guess, consistent throughout all the tests, except the last one
+    # x0 = [1.3, 1.3]  # Initial guess, consistent throughout all the tests
+    x0 = [1.7, 1.7]  # Initial guess, consistent throughout all the tests
     h0 = 1e-3
     sv0 = 1e-3
     search_pr = 1e-3
     pearson_pr = 1e-13
     search_algo = golden_selection.golden_selection
     _restarts = 100
+    _radius = 4.0
 
 
     h_values = [1, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10]
     e_values = [1, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10]
-    q_values = [1, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10]
-    r_values = q_values.copy()
+    q_values = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10]
+    r_values = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8] if fee(x0, _radius) >= 0\
+        else [1, 1e+1, 1e+2, 1e+3, 1e+4, 1e+5, 1e+6, 1e+7, 1e+8]
 
     # log.program_log(log.LogLevel.Important, f"Start testing by derivative step size: {h_values}")
     # test_by_h_step(f, df, x0, h_values, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr, _search_algo=search_algo, _restarts=_restarts)
@@ -296,7 +299,8 @@ def main():
     # test_by_restart_count(f, df, x0, r_values, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr)
 
     log.program_log(log.LogLevel.Important, f"Start testing by fee value")
-    test_by_fee(fee_sq, f, df, x0, r_values, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr)
+    test_by_fee(fee_sq, _radius, f, df, x0, r_values, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr)
+    print(r_values)
 
     plt.show()
 

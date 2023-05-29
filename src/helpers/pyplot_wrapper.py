@@ -94,11 +94,11 @@ def plot_fee_results(_f: callable,
     _x_values = _history[:, 0]
     _y_values = _history[:, 1]
 
-    _min_x = min(_min_x, min(_x_values) - np.sqrt(_radius * 2))
-    _min_y = min(_min_y, min(_y_values) - np.sqrt(_radius * 2))
+    _min_x = min(_min_x, min(_x_values), -np.sqrt(_radius))
+    _min_y = min(_min_y, min(_y_values), -np.sqrt(_radius))
 
-    _max_x = max(_max_x, max(_x_values) + np.sqrt(_radius * 2))
-    _max_y = max(_max_y, max(_y_values) + np.sqrt(_radius * 2))
+    _max_x = max(_max_x, max(_x_values), +np.sqrt(_radius))
+    _max_y = max(_max_y, max(_y_values), +np.sqrt(_radius))
 
     _z_values = _f(_history.T)
 
