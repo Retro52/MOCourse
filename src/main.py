@@ -36,6 +36,13 @@ def fee_sq(_x, _r: float, _radius: float):
     return f(_x) + _r * (fee(_x, _radius) ** 2)
 
 
+def fee_complex(_x, _r, _radius_1, _radius_2):
+    if -1 * fee(_x, _radius_1) >= 0 and (fee(_x, _radius_2)) >= 0:
+        _r = 0
+
+    return f(_x) + _r * (fee(_x, _radius_1) ** 2) + _r * ((-1 * fee(_x, _radius_2)) ** 2)
+
+
 def df(_x, _f, _h=1e-2):
     _x_dx_p = np.array([_x[0] + _h, _x[1]])
     _x_dx_n = np.array([_x[0] - _h, _x[1]])
@@ -255,24 +262,50 @@ def test_by_fee(_f, _radius, _pure_f, _df, _x0, _r_values: list, *args, **kwargs
     plotter.plot_fee_results(_pure_f, results, _radius)
 
 
+def test_by_fee_complex(_f, _radius_1, _radius_2, _pure_f, _df, _x0, _r_values: list, *args, **kwargs):
+    results = [_x0]
+    histories = []
+    deviations = []
+    function_calls = []
+    global function_call_counter
+
+    for _r in _r_values:
+        _result, _history = pearson.pearson2(partial(_f, _r=_r, _radius_1=_radius_1, _radius_2=_radius_2), _df, _x0, *args, **kwargs)
+
+        results.append(_result)
+        histories.append(_history)
+        function_calls.append(function_call_counter)
+        deviations.append(np.linalg.norm(_result - np.array([1.0, 1.0])))
+
+        function_call_counter = 0
+
+    log.program_log(log.LogLevel.Error, f"Test finished:\n"
+                                        f"{str(deviations):100} |\n"
+                                        f"{str(function_calls):100}\n|"
+                                        f"{str(results):100}")
+    plotter.plot_fee_results_complex(_pure_f, results, _radius_1, _radius_2)
+
+
 def main():
     # Example usage
     # x0 = [1.3, 1.3]  # Initial guess, consistent throughout all the tests
-    x0 = [1.7, 1.7]  # Initial guess, consistent throughout all the tests
+    # x0 = [-1.2, 0.]  # Initial guess, consistent throughout all the tests
+    x0 = [3.0, 3.0]  # Initial guess, consistent throughout all the tests
     h0 = 1e-3
     sv0 = 1e-3
     search_pr = 1e-3
     pearson_pr = 1e-13
     search_algo = golden_selection.golden_selection
     _restarts = 100
-    _radius = 4.0
+    _radius_inner = 1.0  # 0 <= 1 - x_1 ** 2 - x_2 ** 2
+    _radius_outer = 4.0  # x_1 ** 2 + x_2 ** 2 - 4 >= 0
 
 
     h_values = [1, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10]
     e_values = [1, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10]
     q_values = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10]
-    r_values = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8] if fee(x0, _radius) >= 0\
-        else [1, 1e+1, 1e+2, 1e+3, 1e+4, 1e+5, 1e+6, 1e+7, 1e+8]
+    # r_values = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 0]
+    r_values = [1, 1e+1, 1e+2, 1e+3, 1e+4, 1e+5, 1e+6, 1e+7, 1e+8]
 
     # log.program_log(log.LogLevel.Important, f"Start testing by derivative step size: {h_values}")
     # test_by_h_step(f, df, x0, h_values, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr, _search_algo=search_algo, _restarts=_restarts)
@@ -283,7 +316,7 @@ def main():
 
     # log.program_log(log.LogLevel.Important, f"Start testing for best Sven algo coef")
     # test_by_q_step(f, df, x0, q_values, _df_h=h0, _gs_e=search_pr, _eps=pearson_pr, _search_algo=search_algo, _restarts=_restarts)
-    # sv0 = 0.001
+    sv0 = 0.001
 
     # log.program_log(log.LogLevel.Important, f"Start testing by linear search precision: {e_values}")
     # test_by_search_precision_step(f, df, x0, e_values, _df_h=h0, _sv_q=sv0, _eps=pearson_pr, _search_algo=search_algo, _restarts=100)
@@ -299,7 +332,8 @@ def main():
     # test_by_restart_count(f, df, x0, r_values, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr)
 
     log.program_log(log.LogLevel.Important, f"Start testing by fee value")
-    test_by_fee(fee_sq, _radius, f, df, x0, r_values, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr)
+    # test_by_fee(fee_sq, _radius, f, df, x0, r_values, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr)
+    test_by_fee_complex(fee_complex, _radius_inner, _radius_outer, f, df, x0, r_values, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr)
     print(r_values)
 
     plt.show()
