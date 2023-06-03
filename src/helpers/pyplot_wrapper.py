@@ -10,7 +10,6 @@ def plot_results(_results: list,
                  _f: callable,
                  _title: str = "",
                  _label: str = ""):
-
     # Plot the search paths
     fig1 = plt.figure()
     ax1 = fig1.add_subplot(111, projection='3d')
@@ -81,7 +80,6 @@ def plot_fee_results(_f: callable,
                      _history,
                      _radius: float = 1.0,
                      _center: np.ndarray = np.array([0, 0])):
-
     fig1 = plt.figure()
     ax1 = fig1.add_subplot(111)
 
@@ -113,6 +111,57 @@ def plot_fee_results(_f: callable,
     fig1.colorbar(contour, ax=ax1)  # Add a colorbar to the plot
 
     circle = plt.Circle((_center[0], _center[1]), np.sqrt(_radius), color='black', fill=False, linewidth=2)
+    ax1.add_patch(circle)
+
+    # Extract x and y coordinates from history
+    ax1.plot(_x_values, _y_values, 'ro-', label='History')
+    for i, point in enumerate(_history):
+        plt.text(point[0], point[1], str(i + 1), fontsize=15, color='black', ha='left', va='top')
+
+    ax1.set_xlabel('x')
+    ax1.set_ylabel('y')
+    ax1.set_title('Contour Plot of Function')
+
+
+def plot_fee_results_complex(_f: callable,
+                             _history,
+                             _radius_1: float = 1.0,
+                             _radius_2: float = 1.0,
+                             _center: np.ndarray = np.array([0, 0])):
+    fig1 = plt.figure()
+    ax1 = fig1.add_subplot(111)
+
+    _min_x = float('inf')
+    _min_y = float('inf')
+    _max_x = float('-inf')
+    _max_y = float('-inf')
+
+    _history = np.array(_history)
+    _x_values = _history[:, 0]
+    _y_values = _history[:, 1]
+    _r = max(_radius_1, _radius_2)
+
+    _min_x = min(_min_x, min(_x_values), -np.sqrt(_r))
+    _min_y = min(_min_y, min(_y_values), -np.sqrt(_r))
+
+    _max_x = max(_max_x, max(_x_values), +np.sqrt(_r))
+    _max_y = max(_max_y, max(_y_values), +np.sqrt(_r))
+
+    _z_values = _f(_history.T)
+
+    # Generate data points
+    _x = np.linspace(_min_x, _max_x, 100)
+    _y = np.linspace(_min_y, _max_y, 100)
+    _X, _Y = np.meshgrid(_x, _y)
+    _Z = _f(np.array([_X, _Y]))
+
+    # Create a 2D contour plot
+    contour = ax1.contourf(_X, _Y, _Z, cmap='cool')
+    fig1.colorbar(contour, ax=ax1)  # Add a colorbar to the plot
+
+    circle = plt.Circle((_center[0], _center[1]), np.sqrt(_radius_1), color='black', fill=False, linewidth=2)
+    ax1.add_patch(circle)
+    circle = plt.Circle((_center[0], _center[1]), np.sqrt(_radius_2), color='black', fill=False, linewidth=2)
     ax1.add_patch(circle)
 
     # Extract x and y coordinates from history
