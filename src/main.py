@@ -33,6 +33,9 @@ def fee(_x, _radius: float):
 
 
 def fee_sq(_x, _r: float, _radius: float):
+    if (fee(_x, _radius)) >= 0:
+        _r = 0
+
     return f(_x) + _r * (fee(_x, _radius) ** 2)
 
 
@@ -239,6 +242,7 @@ def test_by_restart_count(_f, _df, _x0, _restarts_list: list, *args, **kwargs):
 
 
 def test_by_fee(_f, _radius, _pure_f, _df, _x0, _r_values: list, *args, **kwargs):
+    _result = _x0
     results = [_x0]
     histories = []
     deviations = []
@@ -246,7 +250,7 @@ def test_by_fee(_f, _radius, _pure_f, _df, _x0, _r_values: list, *args, **kwargs
     global function_call_counter
 
     for _r in _r_values:
-        _result, _history = pearson.pearson2(partial(_f, _r=_r, _radius=_radius), _df, _x0, *args, **kwargs)
+        _result, _history = pearson.pearson2(partial(_f, _r=_r, _radius=_radius), _df, _result, *args, **kwargs)
 
         results.append(_result)
         histories.append(_history)
@@ -289,8 +293,9 @@ def test_by_fee_complex(_f, _radius_1, _radius_2, _pure_f, _df, _x0, _r_values: 
 def main():
     # Example usage
     # x0 = [1.3, 1.3]  # Initial guess, consistent throughout all the tests
+    x0 = [1.7, 1.7]  # Initial guess, consistent throughout all the tests
     # x0 = [-1.2, 0.]  # Initial guess, consistent throughout all the tests
-    x0 = [3.0, 3.0]  # Initial guess, consistent throughout all the tests
+    # x0 = [3.0, 3.0]  # Initial guess, consistent throughout all the tests
     h0 = 1e-3
     sv0 = 1e-3
     search_pr = 1e-3
@@ -298,6 +303,8 @@ def main():
     search_algo = golden_selection.golden_selection
     _restarts = 100
     _radius_inner = 1.0  # 0 <= 1 - x_1 ** 2 - x_2 ** 2
+
+    _radius = 1.0  # x_1 ** 2 + x_2 ** 2 - 4 >= 0
     _radius_outer = 4.0  # x_1 ** 2 + x_2 ** 2 - 4 >= 0
 
 
@@ -309,32 +316,33 @@ def main():
 
     # log.program_log(log.LogLevel.Important, f"Start testing by derivative step size: {h_values}")
     # test_by_h_step(f, df, x0, h_values, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr, _search_algo=search_algo, _restarts=_restarts)
-    h0 = 0.001
+    h0 = 1
 
     # log.program_log(log.LogLevel.Important, f"Start testing derivative scheme")
     # test_by_derivatives_dir(f, df, df_left, df_right, x0, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr, _search_algo=search_algo, _restarts=_restarts)
 
     # log.program_log(log.LogLevel.Important, f"Start testing for best Sven algo coef")
     # test_by_q_step(f, df, x0, q_values, _df_h=h0, _gs_e=search_pr, _eps=pearson_pr, _search_algo=search_algo, _restarts=_restarts)
-    sv0 = 0.001
+    sv0 = 0.01
+
 
     # log.program_log(log.LogLevel.Important, f"Start testing by linear search precision: {e_values}")
     # test_by_search_precision_step(f, df, x0, e_values, _df_h=h0, _sv_q=sv0, _eps=pearson_pr, _search_algo=search_algo, _restarts=100)
-    search_pr = 0.001
+    search_pr = 0.01
 
     # log.program_log(log.LogLevel.Important, f"Searching for best lambda finder")
     # test_by_search_precision_type(f, df, x0, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr, _restarts=_restarts)
-
+    #
     # log.program_log(log.LogLevel.Important, f"Start testing for break condition")
     # test_by_break_condition(f, df, x0, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr, _restarts=_restarts)
-
+    #
     # log.program_log(log.LogLevel.Important, f"Start testing for restarts count")
     # test_by_restart_count(f, df, x0, r_values, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr)
 
     log.program_log(log.LogLevel.Important, f"Start testing by fee value")
-    # test_by_fee(fee_sq, _radius, f, df, x0, r_values, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr)
-    test_by_fee_complex(fee_complex, _radius_inner, _radius_outer, f, df, x0, r_values, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr)
-    print(r_values)
+    test_by_fee(fee_sq, _radius, f, df, x0, r_values, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr)
+    # test_by_fee_complex(fee_complex, _radius_inner, _radius_outer, f, df, x0, r_values, _df_h=h0, _sv_q=sv0, _gs_e=search_pr, _eps=pearson_pr)
+    # print(r_values)
 
     plt.show()
 
